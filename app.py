@@ -284,7 +284,7 @@ with right:
                     st.session_state["risk"] = response.json()
                 else:
                     st.error("Backend error.")
-            except Exception as e::
+            except Exception as e:
                 st.error(f"Connection error: {str(e)}
 
             loading_placeholder.empty()
