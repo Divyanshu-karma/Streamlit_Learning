@@ -3,7 +3,7 @@ import json
 import streamlit as st
 import pdfplumber
 import requests
-from dotenv import load_dotenv
+
 
 # =================================
 # PAGE CONFIG
@@ -271,7 +271,7 @@ with right:
             loading_placeholder.markdown("### ⏳ Loading...")
 
             try:
-                BACKEND_URL = os.getenv("BACKEND_URL")
+                
 
                 response = requests.post(
                     BACKEND_URL,
@@ -284,8 +284,8 @@ with right:
                     st.session_state["risk"] = response.json()
                 else:
                     st.error("Backend error.")
-            except:
-                st.error("Connection error.")
+            except Exception as e::
+                st.error(f"Connection error: {str(e)}
 
             loading_placeholder.empty()
 
