@@ -285,7 +285,7 @@ with right:
                 else:
                     st.error("Backend error.")
             except Exception as e:
-                st.error(f"Connection error: {str(e)}
+                st.error(f"Connection error: {str(e)}")
 
             loading_placeholder.empty()
 
