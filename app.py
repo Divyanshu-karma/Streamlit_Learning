@@ -277,7 +277,7 @@ with right:
                     BACKEND_URL,
 
                     json={"data": st.session_state["parsed_json"]},
-                    timeout=60
+                    timeout=200
                 )
 
                 if response.status_code == 200:
