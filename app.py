@@ -276,7 +276,10 @@ with right:
                 response = requests.post(
                     BACKEND_URL,
 
-                    json={"data": st.session_state["parsed_json"]},
+                    json={
+                        "data": st.session_state["parsed_json"],
+                        "doc_version": "TMEP Nov 2025"     # 🔥 REQUIRED
+                    },
                     timeout=500
                 )
 
