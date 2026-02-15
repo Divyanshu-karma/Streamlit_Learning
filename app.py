@@ -283,7 +283,8 @@ with right:
                 if response.status_code == 200:
                     st.session_state["risk"] = response.json()
                 else:
-                    st.error(f"Backend error: {response.text}")
+                    st.error(f"Backend error {response.status_code}: {response.text}")
+
             except Exception as e:
                 st.error(f"Connection error: {str(e)}")
 
