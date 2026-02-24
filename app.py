@@ -17,7 +17,6 @@ st.set_page_config(
 GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 BACKEND_URL = st.secrets["BACKEND_URL"]
 
-
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL = "llama-3.1-8b-instant"
 
@@ -184,7 +183,7 @@ def extract_text_from_pdf(uploaded_file):
                 if page_text:
                     text += page_text + "\n"
         return text
-    except:
+    except Exception:
         return None
 
 
@@ -217,12 +216,13 @@ DOCUMENT:
         "temperature": 0.1
     }
 
-    response = requests.post(GROQ_URL, headers=headers, json=payload)
-
-    if response.status_code != 200:
+    try:
+        response = requests.post(GROQ_URL, headers=headers, json=payload)
+        if response.status_code != 200:
+            return None
+        return response.json()["choices"][0]["message"]["content"]
+    except Exception:
         return None
-
-    return response.json()["choices"][0]["message"]["content"]
 
 # =================================
 # MAIN LAYOUT
@@ -230,7 +230,9 @@ DOCUMENT:
 
 left, right = st.columns([1, 2])
 
+# ─────────────────────────────────
 # LEFT PANEL
+# ─────────────────────────────────
 with left:
 
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
@@ -251,12 +253,18 @@ with left:
                             parsed = json.loads(llm_output)
                             st.session_state["parsed_json"] = parsed
                             st.success("JSON generated successfully.")
-                        except:
-                            st.error("Invalid JSON returned.")
+                        except json.JSONDecodeError:
+                            st.error("Invalid JSON returned by model.")
+                    else:
+                        st.error("Failed to get response from Groq API.")
+        else:
+            st.warning("No text extracted — PDF may contain scanned images.")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
+# ─────────────────────────────────
 # RIGHT PANEL
+# ─────────────────────────────────
 with right:
 
     if "parsed_json" in st.session_state:
@@ -268,33 +276,41 @@ with right:
         if st.button("Run Risk Analysis"):
 
             loading_placeholder = st.empty()
-            loading_placeholder.markdown("### ⏳ Loading...")
+            loading_placeholder.markdown("### ⏳ Running Risk Analysis...")
 
             try:
-                
-
                 response = requests.post(
                     BACKEND_URL,
-
                     json={
                         "data": st.session_state["parsed_json"],
-                        "doc_version": "TMEP Nov 2025"     # 🔥 REQUIRED
+                        "doc_version": "TMEP Nov 2025"
                     },
                     timeout=500
                 )
 
                 if response.status_code == 200:
-                    st.session_state["risk"] = response.json()
+                    # ✅ FIXED: Handles both JSON and plain text responses
+                    try:
+                        st.session_state["risk"] = response.json()
+                    except Exception:
+                        st.session_state["risk"] = response.text
                 else:
                     st.error(f"Backend error {response.status_code}: {response.text}")
 
+            except requests.exceptions.Timeout:
+                st.error("Request timed out. Backend took too long to respond.")
+            except requests.exceptions.ConnectionError:
+                st.error("Cannot connect to backend. Please check if the server is running.")
             except Exception as e:
-                st.error(f"Connection error: {str(e)}")
+                st.error(f"Unexpected error: {str(e)}")
 
             loading_placeholder.empty()
 
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # ─────────────────────────────
+    # RISK OUTPUT SECTION
+    # ─────────────────────────────
     if "risk" in st.session_state:
 
         st.markdown("<div id='risk_output'></div>", unsafe_allow_html=True)
@@ -302,14 +318,31 @@ with right:
         st.markdown('<div class="section-card">', unsafe_allow_html=True)
         st.subheader("Risk Assessment Output")
 
-        formatted_text = format_json_to_text(st.session_state["risk"])
-        st.text(formatted_text)
+        risk_data = st.session_state["risk"]
+
+        # ✅ FIXED: Checks type before deciding how to display
+        if isinstance(risk_data, str):
+            # Backend returned plain text → display directly
+            st.text(risk_data)
+
+        elif isinstance(risk_data, dict):
+            # Backend returned JSON → convert to readable formatted text
+            formatted_text = format_json_to_text(risk_data)
+            st.text(formatted_text)
+
+        elif isinstance(risk_data, list):
+            # Backend returned a JSON array → convert to readable formatted text
+            formatted_text = format_json_to_text(risk_data)
+            st.text(formatted_text)
+
+        else:
+            # Fallback for any unexpected type
+            st.text(str(risk_data))
+
+        # Auto-scroll to risk output section
         st.markdown(
-            """
-            <meta http-equiv="refresh" content="0; URL=#risk_output">
-            """,
+            """<meta http-equiv="refresh" content="0; URL=#risk_output">""",
             unsafe_allow_html=True
         )
-        st.markdown('</div>', unsafe_allow_html=True)
 
-        
+        st.markdown('</div>', unsafe_allow_html=True)
